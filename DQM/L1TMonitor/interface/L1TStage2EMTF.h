@@ -72,6 +72,8 @@ private:
 
   MonitorElement* emtfMuonBX;
   MonitorElement* emtfMuonhwPt;
+  MonitorElement* emtfMuonhwPtUnconstrained;
+  MonitorElement* emtfMuonhwDxy;
   MonitorElement* emtfMuonhwEta;
   MonitorElement* emtfMuonhwPhi;
   MonitorElement* emtfMuonhwQual;
