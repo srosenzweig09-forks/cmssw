@@ -184,7 +184,7 @@ void L1TStage2EMTF::bookHistograms(DQMStore::IBooker& ibooker, const edm::Run&, 
 
   // Unconstrained dxy (Suzanne, 11 Nov 2021)
   // CHECK ME: Bounds?
-  emtfTrackDxy = ibooker.book1D("emtfTrackDxy", "EMTF Track d_{xy}", 50, 0, 100);
+  emtfTrackDxy = ibooker.book1D("emtfTrackDxy", "EMTF Track d_{xy}", 50, 0, 200);
   emtfTrackDxy->setAxisTitle("Track d_{xy} [cm]", 1);
 
   emtfTrackEta = ibooker.book1D("emtfTrackEta", "EMTF Track #eta", 100, -2.5, 2.5);
@@ -681,6 +681,12 @@ void L1TStage2EMTF::bookHistograms(DQMStore::IBooker& ibooker, const edm::Run&, 
 
   emtfMuonhwPt = ibooker.book1D("emtfMuonhwPt", "EMTF Muon Cand p_{T}", 512, 0, 512);
   emtfMuonhwPt->setAxisTitle("Hardware p_{T}", 1);
+  
+  emtfMuonhwPtUnconstrained = ibooker.book1D("emtfMuonhwPtUnconstrained", "EMTF Muon Cand p_{T} Unconstrained", 512, 0, 512);
+  emtfMuonhwPtUnconstrained->setAxisTitle("Hardware p_{T} Unconstrained", 1);
+
+  emtfMuonhwDxy = ibooker.book1D("emtfMuonhwDxy", "EMTF Muon Cand d_{xy}", 4, 0, 4);
+  emtfMuonhwDxy->setAxisTitle("Hardware d_{xy}", 1);
 
   emtfMuonhwEta = ibooker.book1D("emtfMuonhwEta", "EMTF Muon Cand #eta", 460, -230, 230);
   emtfMuonhwEta->setAxisTitle("Hardware #eta", 1);
@@ -1155,6 +1161,8 @@ void L1TStage2EMTF::analyze(const edm::Event& e, const edm::EventSetup& c) {
          ++Muon) {
       emtfMuonBX->Fill(itBX);
       emtfMuonhwPt->Fill(Muon->hwPt());
+      emtfMuonhwPtUnconstrained->Fill(Muon->hwPtUnconstrained());
+      emtfMuonhwDxy->Fill(Muon->hwDXY());
       emtfMuonhwEta->Fill(Muon->hwEta());
       emtfMuonhwPhi->Fill(Muon->hwPhi());
       emtfMuonhwQual->Fill(Muon->hwQual());
