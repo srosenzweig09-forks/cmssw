@@ -20,7 +20,7 @@ process.source = cms.Source("PoolSource",
    )
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(100)
+    input = cms.untracked.int32(10000)
 )         
 
 # if unitTest:
@@ -39,6 +39,7 @@ process.maxEvents = cms.untracked.PSet(
 
 # Required to load Global Tag
 process.load("DQM.Integration.config.FrontierCondition_GT_cfi") 
+process.load('Configuration.StandardSequences.MagneticField_cff')
 
 # # Condition for lxplus: change and possibly customise the GT
 from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
@@ -193,7 +194,7 @@ process.simCscTriggerPrimitiveDigis.GEMPadDigiProducer       = cms.InputTag('muo
 process.simCscTriggerPrimitiveDigis.GEMPadDigiClusterProducer       = cms.InputTag('muonGEMPadDigiClusters')
 
 reEmulation = cms.Sequence(
-process.simCscTriggerPrimitiveDigis +
+# process.simCscTriggerPrimitiveDigis +
 process.simEmtfDigis
 )
 
