@@ -6,10 +6,10 @@
 #include "DQM/L1TMonitor/interface/L1TStage2EMTF.h"
 
 L1TStage2EMTF::L1TStage2EMTF(const edm::ParameterSet& ps)
-    : daqToken(consumes<l1t::EMTFDaqOutCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
-      hitToken(consumes<l1t::EMTFHitCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
+    // : daqToken(consumes<l1t::EMTFDaqOutCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
+      : hitToken(consumes<l1t::EMTFHitCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
       trackToken(consumes<l1t::EMTFTrackCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
-      muonToken(consumes<l1t::RegionalMuonCandBxCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
+      muonToken(consumes<l1t::RegionalMuonCandBxCollection>(ps.getParameter<edm::InputTag>("emtfSourceMuon"))),
       monitorDir(ps.getUntrackedParameter<std::string>("monitorDir", "")),
       verbose(ps.getUntrackedParameter<bool>("verbose", false)) {}
 
@@ -716,98 +716,98 @@ void L1TStage2EMTF::analyze(const edm::Event& e, const edm::EventSetup& c) {
   if (verbose)
     edm::LogInfo("L1TStage2EMTF") << "L1TStage2EMTF: analyze..." << std::endl;
 
-  // DAQ Output
-  edm::Handle<l1t::EMTFDaqOutCollection> DaqOutCollection;
-  e.getByToken(daqToken, DaqOutCollection);
+  // // DAQ Output
+  // edm::Handle<l1t::EMTFDaqOutCollection> DaqOutCollection;
+  // e.getByToken(daqToken, DaqOutCollection);
 
-  for (auto DaqOut = DaqOutCollection->begin(); DaqOut != DaqOutCollection->end(); ++DaqOut) {
-    const l1t::emtf::MECollection* MECollection = DaqOut->PtrMECollection();
-    for (auto ME = MECollection->begin(); ME != MECollection->end(); ++ME) {
-      if (ME->SE())
-        emtfErrors->Fill(1);
-      if (ME->SM())
-        emtfErrors->Fill(2);
-      if (ME->BXE())
-        emtfErrors->Fill(3);
-      if (ME->AF())
-        emtfErrors->Fill(4);
-    }
+  // for (auto DaqOut = DaqOutCollection->begin(); DaqOut != DaqOutCollection->end(); ++DaqOut) {
+  //   const l1t::emtf::MECollection* MECollection = DaqOut->PtrMECollection();
+  //   for (auto ME = MECollection->begin(); ME != MECollection->end(); ++ME) {
+  //     if (ME->SE())
+  //       emtfErrors->Fill(1);
+  //     if (ME->SM())
+  //       emtfErrors->Fill(2);
+  //     if (ME->BXE())
+  //       emtfErrors->Fill(3);
+  //     if (ME->AF())
+  //       emtfErrors->Fill(4);
+  //   }
 
-    const l1t::emtf::EventHeader* EventHeader = DaqOut->PtrEventHeader();
-    if (!EventHeader->Rdy())
-      emtfErrors->Fill(5);
+  //   const l1t::emtf::EventHeader* EventHeader = DaqOut->PtrEventHeader();
+  //   if (!EventHeader->Rdy())
+  //     emtfErrors->Fill(5);
 
-    // Fill MPC input link errors
-    int offset = (EventHeader->Sector() - 1) * 9;
-    int endcap = EventHeader->Endcap();
-    l1t::emtf::Counters CO = DaqOut->GetCounters();
-    const std::array<std::array<int, 9>, 5> counters{
-        {{{CO.ME1a_1(),
-           CO.ME1a_2(),
-           CO.ME1a_3(),
-           CO.ME1a_4(),
-           CO.ME1a_5(),
-           CO.ME1a_6(),
-           CO.ME1a_7(),
-           CO.ME1a_8(),
-           CO.ME1a_9()}},
-         {{CO.ME1b_1(),
-           CO.ME1b_2(),
-           CO.ME1b_3(),
-           CO.ME1b_4(),
-           CO.ME1b_5(),
-           CO.ME1b_6(),
-           CO.ME1b_7(),
-           CO.ME1b_8(),
-           CO.ME1b_9()}},
-         {{CO.ME2_1(), CO.ME2_2(), CO.ME2_3(), CO.ME2_4(), CO.ME2_5(), CO.ME2_6(), CO.ME2_7(), CO.ME2_8(), CO.ME2_9()}},
-         {{CO.ME3_1(), CO.ME3_2(), CO.ME3_3(), CO.ME3_4(), CO.ME3_5(), CO.ME3_6(), CO.ME3_7(), CO.ME3_8(), CO.ME3_9()}},
-         {{CO.ME4_1(), CO.ME4_2(), CO.ME4_3(), CO.ME4_4(), CO.ME4_5(), CO.ME4_6(), CO.ME4_7(), CO.ME4_8(), CO.ME4_9()}}}};
-    for (int i = 0; i < 5; i++) {
-      for (int j = 0; j < 9; j++) {
-        if (counters.at(i).at(j) != 0)
-          mpcLinkErrors->Fill(j + 1 + offset, endcap * (i + 0.5), counters.at(i).at(j));
-        else
-          mpcLinkGood->Fill(j + 1 + offset, endcap * (i + 0.5));
-      }
-    }
-    if (CO.ME1n_3() == 1)
-      mpcLinkErrors->Fill(1 + offset, endcap * 5.5);
-    if (CO.ME1n_6() == 1)
-      mpcLinkErrors->Fill(2 + offset, endcap * 5.5);
-    if (CO.ME1n_9() == 1)
-      mpcLinkErrors->Fill(3 + offset, endcap * 5.5);
-    if (CO.ME2n_3() == 1)
-      mpcLinkErrors->Fill(4 + offset, endcap * 5.5);
-    if (CO.ME2n_9() == 1)
-      mpcLinkErrors->Fill(5 + offset, endcap * 5.5);
-    if (CO.ME3n_3() == 1)
-      mpcLinkErrors->Fill(6 + offset, endcap * 5.5);
-    if (CO.ME3n_9() == 1)
-      mpcLinkErrors->Fill(7 + offset, endcap * 5.5);
-    if (CO.ME4n_3() == 1)
-      mpcLinkErrors->Fill(8 + offset, endcap * 5.5);
-    if (CO.ME4n_9() == 1)
-      mpcLinkErrors->Fill(9 + offset, endcap * 5.5);
-    if (CO.ME1n_3() == 0)
-      mpcLinkGood->Fill(1 + offset, endcap * 5.5);
-    if (CO.ME1n_6() == 0)
-      mpcLinkGood->Fill(2 + offset, endcap * 5.5);
-    if (CO.ME1n_9() == 0)
-      mpcLinkGood->Fill(3 + offset, endcap * 5.5);
-    if (CO.ME2n_3() == 0)
-      mpcLinkGood->Fill(4 + offset, endcap * 5.5);
-    if (CO.ME2n_9() == 0)
-      mpcLinkGood->Fill(5 + offset, endcap * 5.5);
-    if (CO.ME3n_3() == 0)
-      mpcLinkGood->Fill(6 + offset, endcap * 5.5);
-    if (CO.ME3n_9() == 0)
-      mpcLinkGood->Fill(7 + offset, endcap * 5.5);
-    if (CO.ME4n_3() == 0)
-      mpcLinkGood->Fill(8 + offset, endcap * 5.5);
-    if (CO.ME4n_9() == 0)
-      mpcLinkGood->Fill(9 + offset, endcap * 5.5);
-  }
+  //   // Fill MPC input link errors
+  //   int offset = (EventHeader->Sector() - 1) * 9;
+  //   int endcap = EventHeader->Endcap();
+  //   l1t::emtf::Counters CO = DaqOut->GetCounters();
+  //   const std::array<std::array<int, 9>, 5> counters{
+  //       {{{CO.ME1a_1(),
+  //          CO.ME1a_2(),
+  //          CO.ME1a_3(),
+  //          CO.ME1a_4(),
+  //          CO.ME1a_5(),
+  //          CO.ME1a_6(),
+  //          CO.ME1a_7(),
+  //          CO.ME1a_8(),
+  //          CO.ME1a_9()}},
+  //        {{CO.ME1b_1(),
+  //          CO.ME1b_2(),
+  //          CO.ME1b_3(),
+  //          CO.ME1b_4(),
+  //          CO.ME1b_5(),
+  //          CO.ME1b_6(),
+  //          CO.ME1b_7(),
+  //          CO.ME1b_8(),
+  //          CO.ME1b_9()}},
+  //        {{CO.ME2_1(), CO.ME2_2(), CO.ME2_3(), CO.ME2_4(), CO.ME2_5(), CO.ME2_6(), CO.ME2_7(), CO.ME2_8(), CO.ME2_9()}},
+  //        {{CO.ME3_1(), CO.ME3_2(), CO.ME3_3(), CO.ME3_4(), CO.ME3_5(), CO.ME3_6(), CO.ME3_7(), CO.ME3_8(), CO.ME3_9()}},
+  //        {{CO.ME4_1(), CO.ME4_2(), CO.ME4_3(), CO.ME4_4(), CO.ME4_5(), CO.ME4_6(), CO.ME4_7(), CO.ME4_8(), CO.ME4_9()}}}};
+  //   for (int i = 0; i < 5; i++) {
+  //     for (int j = 0; j < 9; j++) {
+  //       if (counters.at(i).at(j) != 0)
+  //         mpcLinkErrors->Fill(j + 1 + offset, endcap * (i + 0.5), counters.at(i).at(j));
+  //       else
+  //         mpcLinkGood->Fill(j + 1 + offset, endcap * (i + 0.5));
+  //     }
+  //   }
+  //   if (CO.ME1n_3() == 1)
+  //     mpcLinkErrors->Fill(1 + offset, endcap * 5.5);
+  //   if (CO.ME1n_6() == 1)
+  //     mpcLinkErrors->Fill(2 + offset, endcap * 5.5);
+  //   if (CO.ME1n_9() == 1)
+  //     mpcLinkErrors->Fill(3 + offset, endcap * 5.5);
+  //   if (CO.ME2n_3() == 1)
+  //     mpcLinkErrors->Fill(4 + offset, endcap * 5.5);
+  //   if (CO.ME2n_9() == 1)
+  //     mpcLinkErrors->Fill(5 + offset, endcap * 5.5);
+  //   if (CO.ME3n_3() == 1)
+  //     mpcLinkErrors->Fill(6 + offset, endcap * 5.5);
+  //   if (CO.ME3n_9() == 1)
+  //     mpcLinkErrors->Fill(7 + offset, endcap * 5.5);
+  //   if (CO.ME4n_3() == 1)
+  //     mpcLinkErrors->Fill(8 + offset, endcap * 5.5);
+  //   if (CO.ME4n_9() == 1)
+  //     mpcLinkErrors->Fill(9 + offset, endcap * 5.5);
+  //   if (CO.ME1n_3() == 0)
+  //     mpcLinkGood->Fill(1 + offset, endcap * 5.5);
+  //   if (CO.ME1n_6() == 0)
+  //     mpcLinkGood->Fill(2 + offset, endcap * 5.5);
+  //   if (CO.ME1n_9() == 0)
+  //     mpcLinkGood->Fill(3 + offset, endcap * 5.5);
+  //   if (CO.ME2n_3() == 0)
+  //     mpcLinkGood->Fill(4 + offset, endcap * 5.5);
+  //   if (CO.ME2n_9() == 0)
+  //     mpcLinkGood->Fill(5 + offset, endcap * 5.5);
+  //   if (CO.ME3n_3() == 0)
+  //     mpcLinkGood->Fill(6 + offset, endcap * 5.5);
+  //   if (CO.ME3n_9() == 0)
+  //     mpcLinkGood->Fill(7 + offset, endcap * 5.5);
+  //   if (CO.ME4n_3() == 0)
+  //     mpcLinkGood->Fill(8 + offset, endcap * 5.5);
+  //   if (CO.ME4n_9() == 0)
+  //     mpcLinkGood->Fill(9 + offset, endcap * 5.5);
+  // }
 
   // Hits (CSC LCTs and RPC hits)
   edm::Handle<l1t::EMTFHitCollection> HitCollection;
