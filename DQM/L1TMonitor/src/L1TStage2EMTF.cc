@@ -6,10 +6,10 @@
 #include "DQM/L1TMonitor/interface/L1TStage2EMTF.h"
 
 L1TStage2EMTF::L1TStage2EMTF(const edm::ParameterSet& ps)
-    : daqToken(consumes<l1t::EMTFDaqOutCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
-      hitToken(consumes<l1t::EMTFHitCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
+    // : daqToken(consumes<l1t::EMTFDaqOutCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
+      : hitToken(consumes<l1t::EMTFHitCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
       trackToken(consumes<l1t::EMTFTrackCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
-      muonToken(consumes<l1t::RegionalMuonCandBxCollection>(ps.getParameter<edm::InputTag>("emtfSource"))),
+      muonToken(consumes<l1t::RegionalMuonCandBxCollection>(ps.getParameter<edm::InputTag>("emtfSourceMuon"))),
       monitorDir(ps.getUntrackedParameter<std::string>("monitorDir", "")),
       verbose(ps.getUntrackedParameter<bool>("verbose", false)) {}
 
@@ -177,6 +177,15 @@ void L1TStage2EMTF::bookHistograms(DQMStore::IBooker& ibooker, const edm::Run&, 
 
   emtfTrackPt = ibooker.book1D("emtfTrackPt", "EMTF Track p_{T}", 256, 1, 257);
   emtfTrackPt->setAxisTitle("Track p_{T} [GeV]", 1);
+
+  // Unconstrained pT (Suzanne, 11 Nov 2021)
+  emtfTrackPtUnconstrained = ibooker.book1D("emtfTrackPtUnconstrained", "EMTF Track p_{T} Unconstrained", 256, 1, 257);
+  emtfTrackPtUnconstrained->setAxisTitle("Track p_{T} Unconstrained [GeV]", 1);
+
+  // Unconstrained dxy (Suzanne, 11 Nov 2021)
+  // CHECK ME: Bounds?
+  emtfTrackDxy = ibooker.book1D("emtfTrackDxy", "EMTF Track d_{xy}", 50, 0, 200);
+  emtfTrackDxy->setAxisTitle("Track d_{xy} [cm]", 1);
 
   emtfTrackEta = ibooker.book1D("emtfTrackEta", "EMTF Track #eta", 100, -2.5, 2.5);
   emtfTrackEta->setAxisTitle("Track #eta", 1);
@@ -672,6 +681,12 @@ void L1TStage2EMTF::bookHistograms(DQMStore::IBooker& ibooker, const edm::Run&, 
 
   emtfMuonhwPt = ibooker.book1D("emtfMuonhwPt", "EMTF Muon Cand p_{T}", 512, 0, 512);
   emtfMuonhwPt->setAxisTitle("Hardware p_{T}", 1);
+  
+  emtfMuonhwPtUnconstrained = ibooker.book1D("emtfMuonhwPtUnconstrained", "EMTF Muon Cand p_{T} Unconstrained", 512, 0, 512);
+  emtfMuonhwPtUnconstrained->setAxisTitle("Hardware p_{T} Unconstrained", 1);
+
+  emtfMuonhwDxy = ibooker.book1D("emtfMuonhwDxy", "EMTF Muon Cand d_{xy}", 4, 0, 4);
+  emtfMuonhwDxy->setAxisTitle("Hardware d_{xy}", 1);
 
   emtfMuonhwEta = ibooker.book1D("emtfMuonhwEta", "EMTF Muon Cand #eta", 460, -230, 230);
   emtfMuonhwEta->setAxisTitle("Hardware #eta", 1);
@@ -701,98 +716,98 @@ void L1TStage2EMTF::analyze(const edm::Event& e, const edm::EventSetup& c) {
   if (verbose)
     edm::LogInfo("L1TStage2EMTF") << "L1TStage2EMTF: analyze..." << std::endl;
 
-  // DAQ Output
-  edm::Handle<l1t::EMTFDaqOutCollection> DaqOutCollection;
-  e.getByToken(daqToken, DaqOutCollection);
+  // // DAQ Output
+  // edm::Handle<l1t::EMTFDaqOutCollection> DaqOutCollection;
+  // e.getByToken(daqToken, DaqOutCollection);
 
-  for (auto DaqOut = DaqOutCollection->begin(); DaqOut != DaqOutCollection->end(); ++DaqOut) {
-    const l1t::emtf::MECollection* MECollection = DaqOut->PtrMECollection();
-    for (auto ME = MECollection->begin(); ME != MECollection->end(); ++ME) {
-      if (ME->SE())
-        emtfErrors->Fill(1);
-      if (ME->SM())
-        emtfErrors->Fill(2);
-      if (ME->BXE())
-        emtfErrors->Fill(3);
-      if (ME->AF())
-        emtfErrors->Fill(4);
-    }
+  // for (auto DaqOut = DaqOutCollection->begin(); DaqOut != DaqOutCollection->end(); ++DaqOut) {
+  //   const l1t::emtf::MECollection* MECollection = DaqOut->PtrMECollection();
+  //   for (auto ME = MECollection->begin(); ME != MECollection->end(); ++ME) {
+  //     if (ME->SE())
+  //       emtfErrors->Fill(1);
+  //     if (ME->SM())
+  //       emtfErrors->Fill(2);
+  //     if (ME->BXE())
+  //       emtfErrors->Fill(3);
+  //     if (ME->AF())
+  //       emtfErrors->Fill(4);
+  //   }
 
-    const l1t::emtf::EventHeader* EventHeader = DaqOut->PtrEventHeader();
-    if (!EventHeader->Rdy())
-      emtfErrors->Fill(5);
+  //   const l1t::emtf::EventHeader* EventHeader = DaqOut->PtrEventHeader();
+  //   if (!EventHeader->Rdy())
+  //     emtfErrors->Fill(5);
 
-    // Fill MPC input link errors
-    int offset = (EventHeader->Sector() - 1) * 9;
-    int endcap = EventHeader->Endcap();
-    l1t::emtf::Counters CO = DaqOut->GetCounters();
-    const std::array<std::array<int, 9>, 5> counters{
-        {{{CO.ME1a_1(),
-           CO.ME1a_2(),
-           CO.ME1a_3(),
-           CO.ME1a_4(),
-           CO.ME1a_5(),
-           CO.ME1a_6(),
-           CO.ME1a_7(),
-           CO.ME1a_8(),
-           CO.ME1a_9()}},
-         {{CO.ME1b_1(),
-           CO.ME1b_2(),
-           CO.ME1b_3(),
-           CO.ME1b_4(),
-           CO.ME1b_5(),
-           CO.ME1b_6(),
-           CO.ME1b_7(),
-           CO.ME1b_8(),
-           CO.ME1b_9()}},
-         {{CO.ME2_1(), CO.ME2_2(), CO.ME2_3(), CO.ME2_4(), CO.ME2_5(), CO.ME2_6(), CO.ME2_7(), CO.ME2_8(), CO.ME2_9()}},
-         {{CO.ME3_1(), CO.ME3_2(), CO.ME3_3(), CO.ME3_4(), CO.ME3_5(), CO.ME3_6(), CO.ME3_7(), CO.ME3_8(), CO.ME3_9()}},
-         {{CO.ME4_1(), CO.ME4_2(), CO.ME4_3(), CO.ME4_4(), CO.ME4_5(), CO.ME4_6(), CO.ME4_7(), CO.ME4_8(), CO.ME4_9()}}}};
-    for (int i = 0; i < 5; i++) {
-      for (int j = 0; j < 9; j++) {
-        if (counters.at(i).at(j) != 0)
-          mpcLinkErrors->Fill(j + 1 + offset, endcap * (i + 0.5), counters.at(i).at(j));
-        else
-          mpcLinkGood->Fill(j + 1 + offset, endcap * (i + 0.5));
-      }
-    }
-    if (CO.ME1n_3() == 1)
-      mpcLinkErrors->Fill(1 + offset, endcap * 5.5);
-    if (CO.ME1n_6() == 1)
-      mpcLinkErrors->Fill(2 + offset, endcap * 5.5);
-    if (CO.ME1n_9() == 1)
-      mpcLinkErrors->Fill(3 + offset, endcap * 5.5);
-    if (CO.ME2n_3() == 1)
-      mpcLinkErrors->Fill(4 + offset, endcap * 5.5);
-    if (CO.ME2n_9() == 1)
-      mpcLinkErrors->Fill(5 + offset, endcap * 5.5);
-    if (CO.ME3n_3() == 1)
-      mpcLinkErrors->Fill(6 + offset, endcap * 5.5);
-    if (CO.ME3n_9() == 1)
-      mpcLinkErrors->Fill(7 + offset, endcap * 5.5);
-    if (CO.ME4n_3() == 1)
-      mpcLinkErrors->Fill(8 + offset, endcap * 5.5);
-    if (CO.ME4n_9() == 1)
-      mpcLinkErrors->Fill(9 + offset, endcap * 5.5);
-    if (CO.ME1n_3() == 0)
-      mpcLinkGood->Fill(1 + offset, endcap * 5.5);
-    if (CO.ME1n_6() == 0)
-      mpcLinkGood->Fill(2 + offset, endcap * 5.5);
-    if (CO.ME1n_9() == 0)
-      mpcLinkGood->Fill(3 + offset, endcap * 5.5);
-    if (CO.ME2n_3() == 0)
-      mpcLinkGood->Fill(4 + offset, endcap * 5.5);
-    if (CO.ME2n_9() == 0)
-      mpcLinkGood->Fill(5 + offset, endcap * 5.5);
-    if (CO.ME3n_3() == 0)
-      mpcLinkGood->Fill(6 + offset, endcap * 5.5);
-    if (CO.ME3n_9() == 0)
-      mpcLinkGood->Fill(7 + offset, endcap * 5.5);
-    if (CO.ME4n_3() == 0)
-      mpcLinkGood->Fill(8 + offset, endcap * 5.5);
-    if (CO.ME4n_9() == 0)
-      mpcLinkGood->Fill(9 + offset, endcap * 5.5);
-  }
+  //   // Fill MPC input link errors
+  //   int offset = (EventHeader->Sector() - 1) * 9;
+  //   int endcap = EventHeader->Endcap();
+  //   l1t::emtf::Counters CO = DaqOut->GetCounters();
+  //   const std::array<std::array<int, 9>, 5> counters{
+  //       {{{CO.ME1a_1(),
+  //          CO.ME1a_2(),
+  //          CO.ME1a_3(),
+  //          CO.ME1a_4(),
+  //          CO.ME1a_5(),
+  //          CO.ME1a_6(),
+  //          CO.ME1a_7(),
+  //          CO.ME1a_8(),
+  //          CO.ME1a_9()}},
+  //        {{CO.ME1b_1(),
+  //          CO.ME1b_2(),
+  //          CO.ME1b_3(),
+  //          CO.ME1b_4(),
+  //          CO.ME1b_5(),
+  //          CO.ME1b_6(),
+  //          CO.ME1b_7(),
+  //          CO.ME1b_8(),
+  //          CO.ME1b_9()}},
+  //        {{CO.ME2_1(), CO.ME2_2(), CO.ME2_3(), CO.ME2_4(), CO.ME2_5(), CO.ME2_6(), CO.ME2_7(), CO.ME2_8(), CO.ME2_9()}},
+  //        {{CO.ME3_1(), CO.ME3_2(), CO.ME3_3(), CO.ME3_4(), CO.ME3_5(), CO.ME3_6(), CO.ME3_7(), CO.ME3_8(), CO.ME3_9()}},
+  //        {{CO.ME4_1(), CO.ME4_2(), CO.ME4_3(), CO.ME4_4(), CO.ME4_5(), CO.ME4_6(), CO.ME4_7(), CO.ME4_8(), CO.ME4_9()}}}};
+  //   for (int i = 0; i < 5; i++) {
+  //     for (int j = 0; j < 9; j++) {
+  //       if (counters.at(i).at(j) != 0)
+  //         mpcLinkErrors->Fill(j + 1 + offset, endcap * (i + 0.5), counters.at(i).at(j));
+  //       else
+  //         mpcLinkGood->Fill(j + 1 + offset, endcap * (i + 0.5));
+  //     }
+  //   }
+  //   if (CO.ME1n_3() == 1)
+  //     mpcLinkErrors->Fill(1 + offset, endcap * 5.5);
+  //   if (CO.ME1n_6() == 1)
+  //     mpcLinkErrors->Fill(2 + offset, endcap * 5.5);
+  //   if (CO.ME1n_9() == 1)
+  //     mpcLinkErrors->Fill(3 + offset, endcap * 5.5);
+  //   if (CO.ME2n_3() == 1)
+  //     mpcLinkErrors->Fill(4 + offset, endcap * 5.5);
+  //   if (CO.ME2n_9() == 1)
+  //     mpcLinkErrors->Fill(5 + offset, endcap * 5.5);
+  //   if (CO.ME3n_3() == 1)
+  //     mpcLinkErrors->Fill(6 + offset, endcap * 5.5);
+  //   if (CO.ME3n_9() == 1)
+  //     mpcLinkErrors->Fill(7 + offset, endcap * 5.5);
+  //   if (CO.ME4n_3() == 1)
+  //     mpcLinkErrors->Fill(8 + offset, endcap * 5.5);
+  //   if (CO.ME4n_9() == 1)
+  //     mpcLinkErrors->Fill(9 + offset, endcap * 5.5);
+  //   if (CO.ME1n_3() == 0)
+  //     mpcLinkGood->Fill(1 + offset, endcap * 5.5);
+  //   if (CO.ME1n_6() == 0)
+  //     mpcLinkGood->Fill(2 + offset, endcap * 5.5);
+  //   if (CO.ME1n_9() == 0)
+  //     mpcLinkGood->Fill(3 + offset, endcap * 5.5);
+  //   if (CO.ME2n_3() == 0)
+  //     mpcLinkGood->Fill(4 + offset, endcap * 5.5);
+  //   if (CO.ME2n_9() == 0)
+  //     mpcLinkGood->Fill(5 + offset, endcap * 5.5);
+  //   if (CO.ME3n_3() == 0)
+  //     mpcLinkGood->Fill(6 + offset, endcap * 5.5);
+  //   if (CO.ME3n_9() == 0)
+  //     mpcLinkGood->Fill(7 + offset, endcap * 5.5);
+  //   if (CO.ME4n_3() == 0)
+  //     mpcLinkGood->Fill(8 + offset, endcap * 5.5);
+  //   if (CO.ME4n_9() == 0)
+  //     mpcLinkGood->Fill(9 + offset, endcap * 5.5);
+  // }
 
   // Hits (CSC LCTs and RPC hits)
   edm::Handle<l1t::EMTFHitCollection> HitCollection;
@@ -934,6 +949,9 @@ void L1TStage2EMTF::analyze(const edm::Event& e, const edm::EventSetup& c) {
     emtfTracknHits->Fill(numHits);
     emtfTrackBX->Fill(endcap * (sector - 0.5), Track->BX());
     emtfTrackPt->Fill(Track->Pt());
+    // Unconstrained pT, dxy (Suzanne 11 Nov 2021)
+    emtfTrackPtUnconstrained->Fill(Track->Pt_dxy());
+    emtfTrackDxy->Fill(Track->Dxy());
     emtfTrackEta->Fill(eta);
 
     emtfTrackOccupancy->Fill(eta, phi_glob_rad);
@@ -1143,6 +1161,8 @@ void L1TStage2EMTF::analyze(const edm::Event& e, const edm::EventSetup& c) {
          ++Muon) {
       emtfMuonBX->Fill(itBX);
       emtfMuonhwPt->Fill(Muon->hwPt());
+      emtfMuonhwPtUnconstrained->Fill(Muon->hwPtUnconstrained());
+      emtfMuonhwDxy->Fill(Muon->hwDXY());
       emtfMuonhwEta->Fill(Muon->hwEta());
       emtfMuonhwPhi->Fill(Muon->hwPhi());
       emtfMuonhwQual->Fill(Muon->hwQual());

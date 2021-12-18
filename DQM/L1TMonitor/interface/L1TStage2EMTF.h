@@ -52,7 +52,9 @@ private:
   MonitorElement* emtfTrackBXVsCSCLCT[3];
   MonitorElement* emtfTrackBXVsRPCHit[3];
   MonitorElement* emtfTrackPt;
-  MonitorElement* emtfTrackPtHighQuality;  //Chad Freer May 8 2018
+  MonitorElement* emtfTrackPtUnconstrained;  // Suzanne Rosenzweig Nov 11 2021
+  MonitorElement* emtfTrackDxy;              // Suzanne Rosenzweig Nov 11 2021
+  MonitorElement* emtfTrackPtHighQuality;    //Chad Freer May 8 2018
   MonitorElement* emtfTrackPtHighQualityHighPT;
   MonitorElement* emtfTrackEta;
   MonitorElement* emtfTrackEtaHighQuality;  //Chad Freer May 8 2018
@@ -70,6 +72,8 @@ private:
 
   MonitorElement* emtfMuonBX;
   MonitorElement* emtfMuonhwPt;
+  MonitorElement* emtfMuonhwPtUnconstrained;
+  MonitorElement* emtfMuonhwDxy;
   MonitorElement* emtfMuonhwEta;
   MonitorElement* emtfMuonhwPhi;
   MonitorElement* emtfMuonhwQual;

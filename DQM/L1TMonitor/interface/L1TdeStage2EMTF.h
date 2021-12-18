@@ -30,7 +30,11 @@ private:
   MonitorElement* emtfDataBX;
   MonitorElement* emtfEmulBX;
   MonitorElement* emtfDatahwPt;
+  MonitorElement* emtfDatahwPtUnconstrained;
+  MonitorElement* emtfDatahwDxy;
   MonitorElement* emtfEmulhwPt;
+  MonitorElement* emtfEmulhwPtUnconstrained;
+  MonitorElement* emtfEmulhwDxy;
   MonitorElement* emtfDatahwEta;
   MonitorElement* emtfEmulhwEta;
   MonitorElement* emtfDatahwPhi;

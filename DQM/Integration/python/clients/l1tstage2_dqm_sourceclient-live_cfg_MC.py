@@ -13,12 +13,14 @@ if 'unitTest=True' in sys.argv:
 
 # hack to put the source file here
 process.source = cms.Source("PoolSource",
-   fileNames = cms.untracked.vstring("file:/eos/cms/store/data/Commissioning2021/Cosmics/RAW/v1/000/345/823/00000/7f9ccd7b-11df-4aea-8f30-2a6b656313bf.root",)
+#    fileNames = cms.untracked.vstring("file:/eos/cms/store/data/Commissioning2021/Cosmics/RAW/v1/000/345/823/00000/7f9ccd7b-11df-4aea-8f30-2a6b656313bf.root",)
+#    fileNames = cms.untracked.vstring("/store/relval/CMSSW_11_0_0/RelValDisplacedMuPt10To30/GEN-SIM-DIGI-RAW/PU25ns_110X_mcRun4_realistic_v3_2026D49PU200-v1/20000/47F006BA-915E-9940-B7D3-04E59C255A1F.root",)
+   fileNames = cms.untracked.vstring("file:/eos/cms/store/relval/CMSSW_12_2_0_pre2/RelValDisplacedSUSY_14TeV/GEN-SIM-DIGI-RAW/122X_mcRun3_2021_realistic_v1_HighStat-v1/2580000/fd4d2a88-69af-43f5-a80b-94c5b95a71ba.root",)
 
    )
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(100)
+    input = cms.untracked.int32(10000)
 )         
 
 # if unitTest:
@@ -37,10 +39,11 @@ process.maxEvents = cms.untracked.PSet(
 
 # Required to load Global Tag
 process.load("DQM.Integration.config.FrontierCondition_GT_cfi") 
+process.load('Configuration.StandardSequences.MagneticField_cff')
 
 # # Condition for lxplus: change and possibly customise the GT
-# from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-# process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
+process.GlobalTag = gtCustomise(process.GlobalTag, '122X_mcRun3_2021_realistic_v1', '')
 
 # Required to load EcalMappingRecord
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
@@ -61,22 +64,22 @@ process.dqmEndPath = cms.EndPath(process.dqmEnv * process.dqmSaver * process.dqm
 #--------------------------------------------------
 # Standard Unpacking Path
 
-process.load("Configuration.StandardSequences.RawToDigi_Data_cff")    
+process.load("Configuration.StandardSequences.RawToDigi_cff")    
 
 # remove unneeded unpackers
-process.RawToDigi.remove(process.ecalPreshowerDigis)
-process.RawToDigi.remove(process.muonCSCDigis)
-process.RawToDigi.remove(process.muonDTDigis)
-process.RawToDigi.remove(process.muonRPCDigis)
-process.RawToDigi.remove(process.siPixelDigis)
-process.RawToDigi.remove(process.siStripDigis)
-process.RawToDigi.remove(process.castorDigis)
-process.RawToDigi.remove(process.scalersRawToDigi)
-process.RawToDigi.remove(process.tcdsDigis)
-process.RawToDigi.remove(process.totemTriggerRawToDigi)
-process.RawToDigi.remove(process.totemRPRawToDigi)
-process.RawToDigi.remove(process.ctppsDiamondRawToDigi)
-process.RawToDigi.remove(process.ctppsPixelDigis)
+# process.RawToDigi.remove(process.ecalPreshowerDigis)
+# process.RawToDigi.remove(process.muonCSCDigis)
+# process.RawToDigi.remove(process.muonDTDigis)
+# process.RawToDigi.remove(process.muonRPCDigis)
+# process.RawToDigi.remove(process.siPixelDigis)
+# process.RawToDigi.remove(process.siStripDigis)
+# process.RawToDigi.remove(process.castorDigis)
+# process.RawToDigi.remove(process.scalersRawToDigi)
+# process.RawToDigi.remove(process.tcdsDigis)
+# process.RawToDigi.remove(process.totemTriggerRawToDigi)
+# process.RawToDigi.remove(process.totemRPRawToDigi)
+# process.RawToDigi.remove(process.ctppsDiamondRawToDigi)
+# process.RawToDigi.remove(process.ctppsPixelDigis)
 
 process.rawToDigiPath = cms.Path(process.RawToDigi)
 
@@ -181,8 +184,25 @@ process.l1tStage2MonitorClientPath = cms.Path(process.l1tStage2MonitorClient)
 #--------------------------------------------------
 # L1T Online DQM Schedule
 
+process.load('L1Trigger.L1TMuonEndCap.simEmtfDigis_cfi')
+process.load('L1Trigger.CSCTriggerPrimitives.cscTriggerPrimitiveDigis_cfi')
+process.simCscTriggerPrimitiveDigis = process.cscTriggerPrimitiveDigis.clone()
+process.simCscTriggerPrimitiveDigis.CSCComparatorDigiProducer = cms.InputTag('muonCSCDigis', 'MuonCSCComparatorDigi')
+process.simCscTriggerPrimitiveDigis.CSCWireDigiProducer       = cms.InputTag('muonCSCDigis', 'MuonCSCWireDigi')
+process.l1tStage2Emtf.emtfSource = cms.InputTag("simEmtfDigis")
+process.simCscTriggerPrimitiveDigis.GEMPadDigiProducer       = cms.InputTag('muonGEMPadDigis')
+process.simCscTriggerPrimitiveDigis.GEMPadDigiClusterProducer       = cms.InputTag('muonGEMPadDigiClusters')
+
+reEmulation = cms.Sequence(
+# process.simCscTriggerPrimitiveDigis +
+process.simEmtfDigis
+)
+
+process.reEmulStep = cms.Path(reEmulation)
+
 process.schedule = cms.Schedule(
     process.rawToDigiPath,
+    process.reEmulStep,
     process.l1tMonitorPath,
     process.l1tStage2MonitorClientPath,
 #    process.l1tMonitorEndPath,

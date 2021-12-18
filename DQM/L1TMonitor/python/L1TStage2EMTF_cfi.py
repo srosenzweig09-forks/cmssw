@@ -4,6 +4,7 @@ from DQMServices.Core.DQMEDAnalyzer import DQMEDAnalyzer
 l1tStage2Emtf = DQMEDAnalyzer(
     "L1TStage2EMTF",
     emtfSource = cms.InputTag("emtfStage2Digis"),
+    emtfSourceMuon = cms.InputTag("gmtStage2Digis", "EMTF"),
     monitorDir = cms.untracked.string("L1T/L1TStage2EMTF"), 
     verbose = cms.untracked.bool(False),
 )
